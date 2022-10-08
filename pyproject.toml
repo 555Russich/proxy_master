@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "requests", 'bs4', 'lxml']
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proxy_master"
+version = "0.0.1"
+authors = [
+  { name="555Russich", email="Kutsokondima@yandex.ru" },
+]
+description = "My first package to provide easy reading proxies from txt in different ways"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/pypa/sampleproject"
