@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
   { name="555Russich", email="Kutsokondima@yandex.ru" },
 ]
-description = "My first package to provide easy reading proxies from txt in different ways"
+description = "My first package to provide easy reading proxies from *.txt in different ways"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
@@ -18,4 +18,4 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/pypa/sampleproject"
+"Homepage" = "https://github.com/555Russich/proxy_master"
