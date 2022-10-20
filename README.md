@@ -1,4 +1,4 @@
-<text style="font-size:25px">`pip install proxy-master`<text>
+<text style="font-size:50px">`pip install proxy-master`<text>
 
 Module provides:
 
