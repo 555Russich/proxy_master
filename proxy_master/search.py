@@ -10,7 +10,7 @@ VALIDATE_URLS = \
     ]
 
 
-async def test_proxies(proxies, url='icanhazip.com'):
+async def async_test_proxies(proxies, url='icanhazip.com'):
     async def get_ip(s, url, proxy):
         try:
             async with s.get(
@@ -45,7 +45,7 @@ async def test_proxies(proxies, url='icanhazip.com'):
     return proxies_works
 
 
-async def find_free_proxies():
+async def async_find_free_proxies():
     async with aiohttp.ClientSession() as s:
         async with s.get('https://free-proxy-list.net/') as r:
             soup = BeautifulSoup(await r.text(), 'lxml')
@@ -54,3 +54,11 @@ async def find_free_proxies():
                 soup.find('textarea', class_='form-control').text,
                 flags=re.MULTILINE)
     return [l[0] for l in matches]
+
+
+def test_proxies(proxies):
+    return asyncio.run(test_proxies(proxies))
+
+
+def find_free_proxies():
+    return asyncio.run(find_free_proxies())
