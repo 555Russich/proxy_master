@@ -9,3 +9,4 @@ Module provides:
 Dependencies:
 1) `aiohttp`
 2) `bs4` (beautiful soup)
+3) `lxml`

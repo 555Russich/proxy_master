@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=61.0", "requests", 'bs4', 'lxml']
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "proxy_master"
-version = "1.1.1"
-dependencies = ['aiohttp', 'bs4']
+version = "1.1.2"
+dependencies = ['aiohttp', 'bs4', 'lxml']
 authors = [
   { name="555Russich", email="Kutsokondima@yandex.ru" },
 ]
