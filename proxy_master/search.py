@@ -57,8 +57,8 @@ async def async_find_free_proxies():
 
 
 def test_proxies(proxies):
-    return asyncio.run(test_proxies(proxies))
+    return asyncio.run(async_test_proxies(proxies))
 
 
 def find_free_proxies():
-    return asyncio.run(find_free_proxies())
+    return asyncio.run(async_find_free_proxies())
