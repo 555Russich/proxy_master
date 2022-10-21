@@ -10,7 +10,7 @@ VALIDATE_URLS = \
     ]
 
 
-async def async_test_proxies(proxies, url='icanhazip.com'):
+async def async_test_proxies(proxies, url='icanhazip.com', enable_prints=False):
     async def get_ip(s, url, proxy):
         try:
             async with s.get(
@@ -30,18 +30,18 @@ async def async_test_proxies(proxies, url='icanhazip.com'):
                                 raise Exception(f'Can\'t check ip address from this website.'
                                                 f' Use one of {VALIDATE_URLS=}')
                         if ip == proxy.split(':')[0]:
-                            print(f'Working! Proxy: {proxy}')
+                            print(f'Working! Proxy: {proxy}') if enable_prints else ...
                             proxies_works.append(proxy)
                     case _:
-                        print(f'Not working :( Proxy: {proxy}')
+                        print(f'Not working :( Proxy: {proxy}') if enable_prints else ...
         except:
-            print(f'Not working :( Proxy: {proxy}')
+            print(f'Not working :( Proxy: {proxy}') if enable_prints else ...
 
     proxies_works = []
     async with aiohttp.ClientSession() as s:
         tasks = [asyncio.create_task(get_ip(s, url, proxy)) for proxy in proxies]
         await asyncio.gather(*tasks)
-    print(f'{len(proxies_works)}/{len(proxies)} proxies works')
+    print(f'{len(proxies_works)}/{len(proxies)} proxies works') if enable_prints else ...
     return proxies_works
 
 
