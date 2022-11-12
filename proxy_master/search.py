@@ -138,10 +138,10 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
 
     for resource in RESOURCES_FREE_PROXIES:
         if is_update_needed(resource):
-            print(f'Scrapping proxies from {resource}')
+            print(f'Scrapping proxies from {resource}') if enable_prints else ...
             proxies_ = await scrap_proxies_from_resource(resource)
         else:
-            print(f'Read cached {resource} proxies')
+            print(f'Read cached {resource} proxies') if enable_prints else ...
             proxies_ = read_cached_proxies(resource)
         for proxy in proxies_:
             proxies.append(proxy)
