@@ -2,8 +2,8 @@ import re
 import json
 
 
-def get_proxies_from_file(filepath: str, auth_enable: bool = False):
-    """ Read proxies to list from txt|json """
+def get_proxies_from_file(filepath: str, resource: str, auth_enable: bool = False):
+    """ Read proxies to list from txt | json """
     match filepath.split('.')[-1]:
         case 'txt':
             with open(filepath, 'r') as f:
@@ -22,10 +22,11 @@ def get_proxies_from_file(filepath: str, auth_enable: bool = False):
         case 'json':
             with open(filepath, 'r') as f:
                 data = json.load(f)
-            if auth_enable:
-                return data['my_proxies']
-            else:
-                return [proxy.split('@')[1] for proxy in data['my_proxies']]
+            match resource:
+                case 'my':
+                    return data['my_proxies'] if auth_enable else [proxy.split('@')[1] for proxy in data['my_proxies']]
+                case 'all':
+                    return [proxy for resource in data for proxy in data[resource]['proxies']]
 
 
 def get_proxies_for_requests(proxies):

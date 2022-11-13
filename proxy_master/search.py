@@ -120,7 +120,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
         data[resource] = {
             'last_update': updated_at.strftime('%Y-%m-%d %H:%M:%S'),
             'update_after': update_after,
-            'data': data2append
+            'proxies': data2append
         }
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=4)
@@ -134,7 +134,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
 
     def read_cached_proxies(resource: str) -> list:
         with open(filepath, 'r') as f:
-            return json.load(f)[resource]['data']
+            return json.load(f)[resource]['proxies']
 
     for resource in RESOURCES_FREE_PROXIES:
         if is_update_needed(resource):
