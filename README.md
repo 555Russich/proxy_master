@@ -10,3 +10,7 @@ Dependencies:
 1) `aiohttp`
 2) `bs4` (beautiful soup)
 3) `lxml`
+
+# TODO
+1) scrap also type of proxies, countries
+2) possibility to scrap and test `socks4` and `socks5` proxies. Especially from `geonode.com`
