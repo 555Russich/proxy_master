@@ -13,12 +13,16 @@ URLS_TO_TEST_PROXY = [
 ]
 RESOURCES_FREE_PROXIES = {
     'free-proxy-list.net': {'update_after': '20'},
+    'geonode.com': {'update_after': '60'}
     # 'hidemy.name'
-    # 'geonode.com'
 }
 
 
-async def async_test_proxies(proxies: list, url: str = 'icanhazip.com', enable_prints: bool = False) -> list:
+async def async_test_proxies(proxies: list,
+                             url: str = 'icanhazip.com',
+                             enable_prints: bool = False,
+                             timeout=3,
+                             ) -> list:
     def is_proxy_works(html: str, proxy: str, url: str, enable_prints: bool) -> bool:
         match url:
             case 'icanhazip.com':
@@ -32,17 +36,15 @@ async def async_test_proxies(proxies: list, url: str = 'icanhazip.com', enable_p
             print(f'Working! Proxy: {proxy}') if enable_prints else ...
             return True
         else:
-            # print(f'NOT working :( Proxy: {proxy}') if enable_prints else ...
             return False
 
     proxies_works = []
     async with ClientSession() as s:
-        tasks = [asyncio.create_task(session_request(s, url, proxy)) for proxy in proxies]
+        tasks = [asyncio.create_task(session_request(s, url, proxy, timeout=timeout)) for proxy in proxies]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for i in range(len(results)):
-            res = results[i]
-            if type(res) is str:
-                if is_proxy_works(res, proxies[i], url, enable_prints) is True:
+            if type(results[i]) is str:
+                if is_proxy_works(results[i], proxies[i], url, enable_prints) is True:
                     proxies_works.append(proxies[i])
     print(f'{len(proxies_works)}/{len(proxies)} proxies works') if enable_prints else ...
     return proxies_works
@@ -52,49 +54,53 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
     proxies = []
 
     async def scrap_proxies_from_resource(resource: str):
-        update_after = RESOURCES_FREE_PROXIES[resource]['update_after']
-        match resource:
-            case 'free-proxy-list.net':
-                async with ClientSession() as s:
+        async with ClientSession() as s:
+            match resource:
+                case 'free-proxy-list.net':
                     r = await session_request(s, resource)
                     proxies, updated_at = parse_proxies_from_html(r, resource)
-                    append_proxies_from_resource(resource, proxies, updated_at, '20')
-            case 'hidemy.name':
-                headers = {
-                    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-                    "accept-encoding": "gzip, deflate, utf-8",
-                    "accept-language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
-                    'sec-ch-ua': '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
-                    'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Linux"',
-                    'sec-fetch-dest': 'document',
-                    'sec-fetch-mode': 'navigate',
-                    'sec-fetch-site': 'none',
-                    'sec-fetch-user': '?1',
-                    'upgrade-insecure-requests': '1',
-                    "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
-                }
-                r = await session_request(s, f'{resource}/en/proxy-list/', headers=headers)
-                last_pagination = int(BeautifulSoup(r, 'lxml').find('div', class_='pagination').find_all('li')[-2].text)
-                return [
-                    session_request(s, f'{resource}/en/proxy-list/?start={i*64}', headers=headers)
-                    for i in range(last_pagination)
-                ]
-            case 'geonode.com':
-                url = 'proxylist.geonode.com/api/proxy-list'
-                tasks = []
-                proxies_count = 10050
-                params = {
-                    "limit": 300,
-                    "page": 0,
-                    "sort_by": "lastChecked",
-                    "sort_type": "desc"
-                }
-                pages = ceil(proxies_count / params['limit']) + 1
-                for i in range(1, pages):
-                    params['page'] = i
-                    tasks.append(session_request(s, url, params=params, return_json=True))
-        return proxies
+                case 'hidemy.name':
+                    headers = {
+                        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+                        "accept-encoding": "gzip, deflate, utf-8",
+                        "accept-language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                        'sec-ch-ua': '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
+                        'sec-ch-ua-mobile': '?0',
+                        'sec-ch-ua-platform': '"Linux"',
+                        'sec-fetch-dest': 'document',
+                        'sec-fetch-mode': 'navigate',
+                        'sec-fetch-site': 'none',
+                        'sec-fetch-user': '?1',
+                        'upgrade-insecure-requests': '1',
+                        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
+                    }
+                    r = await session_request(s, f'{resource}/en/proxy-list/', headers=headers)
+                    last_pagination = int(BeautifulSoup(r, 'lxml').find(
+                        'div', class_='pagination'
+                    ).find_all('li')[-2].text)
+                    return [
+                        session_request(s, f'{resource}/en/proxy-list/?start={i*64}', headers=headers)
+                        for i in range(last_pagination)
+                    ]
+                case 'geonode.com':
+                    proxies = set()
+                    url = 'proxylist.geonode.com/api/proxy-list'
+                    params = {
+                        "limit": 1,
+                        "page": 1,
+                        "sort_by": "lastChecked",
+                        "sort_type": "desc",
+                        "protocols": 'https,http',
+                    }
+                    r = await session_request(s, url, params=params, return_json=True)
+                    params['limit'] = 500
+                    for page in range(1, ceil(r['total'] / params['limit']) + 1):
+                        params['page'] = page
+                        r = await session_request(s, url, params=params, return_json=True, timeout=20)
+                        for proxy_data in r['data']:
+                            proxies.add(f"{proxy_data['ip']}:{proxy_data['port']}")
+                    updated_at = datetime.utcnow()
+        return list(proxies), updated_at
 
     def parse_proxies_from_html(html: str, resource: str):
         match resource:
@@ -139,7 +145,11 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
     for resource in RESOURCES_FREE_PROXIES:
         if is_update_needed(resource):
             print(f'Scrapping proxies from {resource}') if enable_prints else ...
-            proxies_ = await scrap_proxies_from_resource(resource)
+            proxies_, updated_at = await scrap_proxies_from_resource(resource)
+            append_proxies_from_resource(resource,
+                                         proxies_,
+                                         updated_at,
+                                         RESOURCES_FREE_PROXIES[resource]['update_after'])
         else:
             print(f'Read cached {resource} proxies') if enable_prints else ...
             proxies_ = read_cached_proxies(resource)
@@ -173,9 +183,9 @@ async def session_request(
                 return r
 
 
-def test_proxies(proxies: list, url: str = 'icanhazip.com', enable_prints: bool = False):
+def test_proxies(proxies: list, url: str = 'icanhazip.com', enable_prints: bool = False, timeout=3):
     """ Sync call of test_proxies """
-    return asyncio.run(async_test_proxies(proxies, url, enable_prints))
+    return asyncio.run(async_test_proxies(proxies, url, enable_prints, timeout=timeout))
 
 
 def scrap_free_proxies(enable_prints: bool = False):
@@ -186,4 +196,6 @@ def scrap_free_proxies(enable_prints: bool = False):
 if __name__ == '__main__':
     from my import get_proxies_from_file
     # print(test_proxies(scrap_free_proxies(enable_prints=True), enable_prints=True))
-    print(scrap_free_proxies(enable_prints=True))
+    res = scrap_free_proxies(enable_prints=True)
+    print(len(res), res)
+    test_proxies(proxies=res, enable_prints=True)
