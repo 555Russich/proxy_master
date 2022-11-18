@@ -6,6 +6,7 @@ import asyncio
 from aiohttp import ClientSession, ClientResponse
 from bs4 import BeautifulSoup
 
+pattern_ip_port = r"((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):\d{1,5})"
 filepath = '/home/russich555/Documents/proxies.json'
 URLS_TO_TEST_PROXY = [
     'icanhazip.com',
@@ -13,7 +14,8 @@ URLS_TO_TEST_PROXY = [
 ]
 RESOURCES_FREE_PROXIES = {
     'free-proxy-list.net': {'update_after': '20'},
-    'geonode.com': {'update_after': '60'}
+    'geonode.com': {'update_after': '60'},
+    'openproxy.space': {'update_after': str(60 * 24)}
     # 'hidemy.name'
 }
 
@@ -100,6 +102,11 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                         for proxy_data in r['data']:
                             proxies.add(f"{proxy_data['ip']}:{proxy_data['port']}")
                     updated_at = datetime.utcnow()
+                case 'openproxy.space':
+                    url = 'openproxy.space/list/http'
+                    r = await session_request(s, url)
+                    proxies = [t[0] for t in re.findall(pattern_ip_port, r) if '127.0.0.1' not in t[0]]
+                    updated_at = datetime.utcnow()
         return list(proxies), updated_at
 
     def parse_proxies_from_html(html: str, resource: str):
@@ -107,8 +114,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
             case 'free-proxy-list.net':
                 soup = BeautifulSoup(html, 'lxml')
                 matches = re.findall(
-                    r'^((\d{1,3}\.){3}\d{1,3}:\d{1,5})$', soup.find('textarea', class_='form-control').text,
-                    flags=re.MULTILINE
+                    pattern_ip_port, soup.find('textarea', class_='form-control').text
                 )
                 updated_at = datetime.strptime(re.search(
                     r'Updated at (.+ UTC)', soup.find('textarea', class_='form-control').text
@@ -134,6 +140,20 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
     def is_update_needed(resource: str) -> bool:
         with open(filepath, 'r') as f:
             data = json.load(f)
+
+        # Check if resource in file, otherwise append
+        if not data.get(resource):
+            data[resource] = {
+                'last_update': None,
+                'update_after': None,
+                'proxies': None
+            }
+            with open(filepath, 'w') as f:
+                json.dump(data, f, indent=4)
+            return True
+        elif data.get(resource) and not data[resource].get('proxies'):
+            return True
+
         last_update = datetime.strptime(data[resource]['last_update'], '%Y-%m-%d %H:%M:%S')
         updated_after = int(data[resource]['update_after'])
         return True if datetime.utcnow() - timedelta(minutes=updated_after) > last_update else False
@@ -198,4 +218,4 @@ if __name__ == '__main__':
     # print(test_proxies(scrap_free_proxies(enable_prints=True), enable_prints=True))
     res = scrap_free_proxies(enable_prints=True)
     print(len(res), res)
-    test_proxies(proxies=res, enable_prints=True)
+    # test_proxies(proxies=res, enable_prints=True)
