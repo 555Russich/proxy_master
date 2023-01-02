@@ -13,9 +13,9 @@ URLS_TO_TEST_PROXY = [
     '2ip.ru'
 ]
 RESOURCES_FREE_PROXIES = {
-    'free-proxy-list.net': {'update_after': '20'},
-    'geonode.com': {'update_after': '60'},
-    'openproxy.space': {'update_after': str(60 * 24)}
+    'free-proxy-list.net': {'update_after': '15'},
+    'geonode.com': {'update_after': '30'},
+    'openproxy.space': {'update_after': '60'}
     # 'hidemy.name'
 }
 
@@ -187,7 +187,7 @@ async def session_request(
         json_: dict = None,
         return_json: bool = False,
         timeout: int = 3
-) -> ClientResponse | str:
+) -> ClientResponse | str | dict:
     async with s.get(
             f'https://{url}',
             proxy=f'http://{proxy}' if proxy else None,
