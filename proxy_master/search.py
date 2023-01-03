@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from math import ceil
 from datetime import datetime, timedelta
@@ -6,8 +7,8 @@ import asyncio
 from aiohttp import ClientSession, ClientResponse
 from bs4 import BeautifulSoup
 
-pattern_ip_port = r"((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):\d{1,5})"
-filepath = '/home/russich555/Documents/proxies.json'
+FILEPATH = '/home/russich555/Documents/proxies.json'
+PATTERN_IP_PORT = r"((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):\d{1,5})"
 URLS_TO_TEST_PROXY = [
     'icanhazip.com',
     '2ip.ru'
@@ -15,7 +16,8 @@ URLS_TO_TEST_PROXY = [
 RESOURCES_FREE_PROXIES = {
     'free-proxy-list.net': {'update_after': '15'},
     'geonode.com': {'update_after': '30'},
-    'openproxy.space': {'update_after': '60'}
+    'openproxy.space': {'update_after': '60'},
+    'freeproxylists.net': {'update_after': '30'},
     # 'hidemy.name'
 }
 
@@ -53,7 +55,6 @@ async def async_test_proxies(proxies: list,
 
 
 async def async_scrap_free_proxies(enable_prints: bool = False):
-    proxies = []
 
     async def scrap_proxies_from_resource(resource: str):
         async with ClientSession() as s:
@@ -105,16 +106,51 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                 case 'openproxy.space':
                     url = 'openproxy.space/list/http'
                     r = await session_request(s, url)
-                    proxies = [t[0] for t in re.findall(pattern_ip_port, r) if '127.0.0.1' not in t[0]]
+                    proxies = [t[0] for t in re.findall(PATTERN_IP_PORT, r) if '127.0.0.1' not in t[0]]
+                    updated_at = datetime.utcnow()
+                case 'freeproxylists.net':
+                    # TODO async collecting pages
+                    proxies = []
+                    url = 'www.freeproxylists.net/ru/'
+                    headers = {
+                        'authority': 'www.freeproxylists.net',
+                        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                        'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+                        'cache-control': 'max-age=0',
+                        'cookie': 'hl=ru; userno=20230103-000706; from=google; refdomain=www.google.com; visited=2023%2F01%2F03%2002%3A38%3A58; pv=6',
+                        'origin': 'https://www.freeproxylists.net',
+                        'referer': 'https://www.freeproxylists.net/ru/',
+                        'sec-ch-ua': '"Not?A_Brand";v="8", "Chromium";v="108", "Google Chrome";v="108"',
+                        'sec-ch-ua-mobile': '?0',
+                        'sec-ch-ua-platform': '"Linux"',
+                        'sec-fetch-dest': 'document',
+                        'sec-fetch-mode': 'navigate',
+                        'sec-fetch-site': 'same-origin',
+                        'sec-fetch-user': '?1',
+                        'upgrade-insecure-requests': '1',
+                        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+                    }
+
+                    last_page = None
+                    params = {'page': 1}
+                    while True:
+                        r = await session_request(s, url, headers=headers, params=params)
+                        soup = BeautifulSoup(r, 'lxml')
+                        if not last_page:
+                            last_page = int(soup.find('div', class_='page').find_all('a')[-2].text)
+                        proxies += parse_proxies_from_html(r, resource)
+                        if params['page'] == last_page:
+                            break
+                        params['page'] += 1
                     updated_at = datetime.utcnow()
         return list(proxies), updated_at
 
     def parse_proxies_from_html(html: str, resource: str):
+        soup = BeautifulSoup(html, 'lxml')
         match resource:
             case 'free-proxy-list.net':
-                soup = BeautifulSoup(html, 'lxml')
                 matches = re.findall(
-                    pattern_ip_port, soup.find('textarea', class_='form-control').text
+                    PATTERN_IP_PORT, soup.find('textarea', class_='form-control').text
                 )
                 updated_at = datetime.strptime(re.search(
                     r'Updated at (.+ UTC)', soup.find('textarea', class_='form-control').text
@@ -122,23 +158,38 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                 return [l[0] for l in matches], updated_at
             case 'hidemy.name':
                 ...
+            case 'freeproxylists.net':
+                proxies = []
+                for tr in soup.find('table', class_='DataGrid').find_all('tr')[1:]:
+                    try:
+                        ip_hex = str(tr.find_all('td')[0].string).replace('IPDecode', '')[2:-2]  # bytearray.fromhex(s.replace('%', '')).decode()
+                        ip = BeautifulSoup(bytearray.fromhex(ip_hex.replace('%', '')).decode(), 'lxml').text
+                        port = tr.find_all('td')[1].text
+                        proxies.append(f'{ip}:{port}')
+                    except IndexError:
+                        continue
+                return proxies
             case unexpected_url:
                 raise Exception(f'Unable to find free proxies on {unexpected_url}.\n'
                                 f'List which available: {RESOURCES_FREE_PROXIES}')
 
-    def append_proxies_from_resource(resource: str, data2append, updated_at: datetime, update_after: str) -> None:
-        with open(filepath, 'r') as f:
+    def append_proxies_from_resource(resource: str,
+                                     data2append,
+                                     updated_at: datetime,
+                                     update_after: str
+                                     ) -> None:
+        with open(FILEPATH, 'r') as f:
             data = json.load(f)
         data[resource] = {
             'last_update': updated_at.strftime('%Y-%m-%d %H:%M:%S'),
             'update_after': update_after,
             'proxies': data2append
         }
-        with open(filepath, 'w') as f:
+        with open(FILEPATH, 'w') as f:
             json.dump(data, f, indent=4)
 
     def is_update_needed(resource: str) -> bool:
-        with open(filepath, 'r') as f:
+        with open(FILEPATH, 'r') as f:
             data = json.load(f)
 
         # Check if resource in file, otherwise append
@@ -148,7 +199,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                 'update_after': None,
                 'proxies': None
             }
-            with open(filepath, 'w') as f:
+            with open(FILEPATH, 'w') as f:
                 json.dump(data, f, indent=4)
             return True
         elif data.get(resource) and not data[resource].get('proxies'):
@@ -159,9 +210,10 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
         return True if datetime.utcnow() - timedelta(minutes=updated_after) > last_update else False
 
     def read_cached_proxies(resource: str) -> list:
-        with open(filepath, 'r') as f:
+        with open(FILEPATH, 'r') as f:
             return json.load(f)[resource]['proxies']
 
+    proxies = []
     for resource in RESOURCES_FREE_PROXIES:
         if is_update_needed(resource):
             print(f'Scrapping proxies from {resource}') if enable_prints else ...
@@ -169,7 +221,8 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
             append_proxies_from_resource(resource,
                                          proxies_,
                                          updated_at,
-                                         RESOURCES_FREE_PROXIES[resource]['update_after'])
+                                         RESOURCES_FREE_PROXIES[resource]['update_after']
+                                         )
         else:
             print(f'Read cached {resource} proxies') if enable_prints else ...
             proxies_ = read_cached_proxies(resource)
@@ -178,16 +231,15 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
     return proxies
 
 
-async def session_request(
-        s: ClientSession,
-        url: str,
-        proxy: str = None,
-        headers: dict = None,
-        params: dict = None,
-        json_: dict = None,
-        return_json: bool = False,
-        timeout: int = 3
-) -> ClientResponse | str | dict:
+async def session_request(s: ClientSession,
+                          url: str,
+                          proxy: str = None,
+                          headers: dict = None,
+                          params: dict = None,
+                          json_: dict = None,
+                          return_json: bool = False,
+                          timeout: int = 3
+                          ) -> ClientResponse | str | dict:
     async with s.get(
             f'https://{url}',
             proxy=f'http://{proxy}' if proxy else None,
