@@ -6,7 +6,7 @@ import asyncio
 from aiohttp import ClientSession, ClientResponse
 from bs4 import BeautifulSoup
 
-from exceptions import CaptchaOnPageError
+from .exceptions import CaptchaOnPageError
     
 
 FILEPATH = '/home/russich555/Documents/proxies.json'
