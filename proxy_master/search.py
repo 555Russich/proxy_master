@@ -6,6 +6,9 @@ import asyncio
 from aiohttp import ClientSession, ClientResponse
 from bs4 import BeautifulSoup
 
+from exceptions import CaptchaOnPageError
+    
+
 FILEPATH = '/home/russich555/Documents/proxies.json'
 PATTERN_IP_PORT = r"((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]):\d{1,5})"
 URLS_TO_TEST_PROXY = [
@@ -56,6 +59,8 @@ async def async_test_proxies(proxies: list,
 async def async_scrap_free_proxies(enable_prints: bool = False):
 
     async def scrap_proxies_from_resource(resource: str):
+        error_while_scrapping = False
+
         async with ClientSession() as s:
             match resource:
                 case 'free-proxy-list.net':
@@ -108,7 +113,6 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                     proxies = [t[0] for t in re.findall(PATTERN_IP_PORT, r) if '127.0.0.1' not in t[0]]
                     updated_at = datetime.utcnow()
                 case 'freeproxylists.net':
-                    # TODO async collecting pages
                     proxies = []
                     url = 'www.freeproxylists.net/ru/'
                     headers = {
@@ -133,13 +137,25 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                     last_page = None
                     params = {'page': 1}
                     while True:
-                        r = await session_request(s, url, headers=headers, params=params)
+                        r = await session_request(s, url, headers=headers, params=params, timeout=10)
                         soup = BeautifulSoup(r, 'lxml')
+                        
                         if not last_page:
                             last_page = int(soup.find('div', class_='page').find_all('a')[-2].text)
+                        
+                        if ...: # TODO test different timeouts, sometimes gets blocked.
+                            # TODO identify captcha on page
+                            raise CaptchaOnPageError(f'{resource=} | got proxies={len(proxies)}')
+
+                        count_before = len(proxies)
                         proxies += parse_proxies_from_html(r, resource)
+                        count_after = len(proxies)
+                        print(f'{resource=} | page={params["page"]} | proxies from page: {count_after-count_before} |'
+                              f'total: {len(proxies)}') if enable_prints else None
+
                         if params['page'] == last_page:
                             break
+
                         params['page'] += 1
                     updated_at = datetime.utcnow()
         return list(proxies), updated_at
@@ -161,7 +177,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                 proxies = []
                 for tr in soup.find('table', class_='DataGrid').find_all('tr')[1:]:
                     try:
-                        ip_hex = str(tr.find_all('td')[0].string).replace('IPDecode', '')[2:-2]  # bytearray.fromhex(s.replace('%', '')).decode()
+                        ip_hex = str(tr.find_all('td')[0].string).replace('IPDecode', '')[2:-2]
                         ip = BeautifulSoup(bytearray.fromhex(ip_hex.replace('%', '')).decode(), 'lxml').text
                         port = tr.find_all('td')[1].text
                         proxies.append(f'{ip}:{port}')
@@ -209,6 +225,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
         return True if datetime.utcnow() - timedelta(minutes=updated_after) > last_update else False
 
     def read_cached_proxies(resource: str) -> list:
+        print(f'Read cached {resource} proxies') if enable_prints else ...
         with open(FILEPATH, 'r') as f:
             return json.load(f)[resource]['proxies']
 
@@ -216,17 +233,19 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
     for resource in RESOURCES_FREE_PROXIES:
         if is_update_needed(resource):
             print(f'Scrapping proxies from {resource}') if enable_prints else ...
-            proxies_, updated_at = await scrap_proxies_from_resource(resource)
-            append_proxies_from_resource(resource,
-                                         proxies_,
-                                         updated_at,
-                                         RESOURCES_FREE_PROXIES[resource]['update_after']
-                                         )
+            try:
+                resources_proxies, updated_at = await scrap_proxies_from_resource(resource)
+                append_proxies_from_resource(resource, resources_proxies, updated_at,
+                                             RESOURCES_FREE_PROXIES[resource]['update_after'])
+            except Exception as ex:
+                print(f'Error while scrapping proxies from {resource}.\n{ex}')
+                resources_proxies = read_cached_proxies(resource)
         else:
-            print(f'Read cached {resource} proxies') if enable_prints else ...
-            proxies_ = read_cached_proxies(resource)
-        for proxy in proxies_:
+            resources_proxies = read_cached_proxies(resource)
+
+        for proxy in resources_proxies:
             proxies.append(proxy)
+
     return proxies
 
 
