@@ -238,7 +238,7 @@ async def async_scrap_free_proxies(enable_prints: bool = False):
                 append_proxies_from_resource(resource, resources_proxies, updated_at,
                                              RESOURCES_FREE_PROXIES[resource]['update_after'])
             except Exception as ex:
-                print(f'Error while scrapping proxies from {resource}.\n{ex}')
+                print(f'Error while scrapping proxies from {resource}.\n{ex}') if enable_prints else ...
                 resources_proxies = read_cached_proxies(resource)
         else:
             resources_proxies = read_cached_proxies(resource)
