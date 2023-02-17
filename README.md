@@ -1,4 +1,4 @@
-<text style="font-size:100px">`pip install proxy-master`<text>
+### pip install proxy-master
 
 Module provides:
 1) Read proxies servers from local file in different ways for `requests`, `selenium.webdriver`
