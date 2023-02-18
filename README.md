@@ -1,9 +1,9 @@
-This module provide asynchronously scrapping a bunch of `http`, `https`, `socks4`, `socks5` proxies from websites such as:
+This module provide asynchronously scraping a bunch of `http`, `https`, `socks4`, `socks5` proxies from websites such as:
 1) [free-proxy-list.net](https://free-proxy-list.net)
 2) [geonode.com](https://geonode.com)
 3) [hidemy.name](https://hidemy.name)
 
-Just now proxy-master scrapped `23265 proxies` from websites above. Count of unique by ip:port is `18383`, 
+Just now proxy-master scraped `23265 proxies` from websites above. Count of unique by ip:port is `18383`, 
 but some servers support different protocols.
 
 > I add more websites to scrap from time to time, **BUT** looking for help and advices 
@@ -45,7 +45,7 @@ working_proxies = pm.test_proxies(
 
 ## Features
 - [x] Scrap different type of proxies include `https`, `socks4`, `socks5`
-- [x] <i>Recursively</i> scrapping. Use already collected proxies to scrap another website
+- [x] <i>Recursively</i> scraping. Use already collected proxies to scrap another website
 - [x] test_public_ip(...) `socks4`, `socks5` using <a href="https://github.com/Skactor/aiohttp-proxy">aiohttp-proxy</a>
 
 ## In plans
