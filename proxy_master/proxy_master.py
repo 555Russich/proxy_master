@@ -60,7 +60,7 @@ class DataHandler:
         return proxies
 
 
-class Scrapper:
+class Scraper:
     @staticmethod
     async def send_request(
             url: str,
@@ -112,7 +112,7 @@ class Scrapper:
         working_proxies = []
         tasks = [
             asyncio.create_task(
-                Scrapper.send_request(
+                Scraper.send_request(
                     response_type='text',
                     url=f'{website_protocol}://{url}',
                     proxy=f'{proxy_protocol}://{proxy}' if proxy_protocol in ('http', 'https') else None,
@@ -151,7 +151,7 @@ class Scrapper:
         proxies = []
         match domain:
             case 'free-proxy-list.net':
-                response: str = await Scrapper.send_request(
+                response: str = await Scraper.send_request(
                     url=f'https://free-proxy-list.net',
                     response_type='text'
                 )
@@ -185,7 +185,7 @@ class Scrapper:
                     "sort_type": "",
                     "protocols": '',
                 }
-                response: dict = await Scrapper.send_request(
+                response: dict = await Scraper.send_request(
                     url='https://proxylist.geonode.com/api/proxy-list',
                     response_type='json',
                     params=params,
@@ -194,7 +194,7 @@ class Scrapper:
                 params['limit'] = 500
                 for page in range(1, math.ceil(response['total'] / params['limit']) + 1):
                     params['page'] = page
-                    response: dict = await Scrapper.send_request(
+                    response: dict = await Scraper.send_request(
                         url='https://proxylist.geonode.com/api/proxy-list',
                         response_type='json',
                         params=params,
@@ -289,7 +289,7 @@ class Scrapper:
 
                 proxies_to_scrap = DataHandler.get_proxies_list(data, 'socks4')
                 # making request to get pagination
-                response = await Scrapper.send_request(
+                response = await Scraper.send_request(
                     url=f'https://hidemy.name/en/proxy-list/',
                     response_type='text',
                     headers=headers,
@@ -300,7 +300,7 @@ class Scrapper:
                         tasks = []
                         for proxy in proxies_to_scrap:
                             task = asyncio.create_task(
-                                Scrapper.send_request(
+                                Scraper.send_request(
                                     url=f'https://hidemy.name/en/proxy-list/',
                                     response_type='text',
                                     connector=ProxyConnector.from_url(f'socks4://{proxy}'),
@@ -327,7 +327,7 @@ class Scrapper:
                     for proxy, page in zip(proxies_to_scrap, pages_to_tasks):
                         tasks.append(
                             asyncio.create_task(
-                                Scrapper.send_request(
+                                Scraper.send_request(
                                     url=f'https://hidemy.name/en/proxy-list/',
                                     response_type='text',
                                     connector=ProxyConnector.from_url(f'socks4://{proxy}'),
@@ -422,7 +422,7 @@ class Scrapper:
         for domain, website_data in data.items():
             if (time.time() - website_data['last_update']) // 60 > website_data['update_after_min']:
                 try:
-                    website_data['proxies'] = await Scrapper._scrap_website(domain, data)
+                    website_data['proxies'] = await Scraper._scrap_website(domain, data)
                     website_data['last_update'] = int(time.time())
                     anyone_updated = True
                     print(f'Scrapped {len(website_data["proxies"])} proxies from {domain}') if do_prints else ...
@@ -450,7 +450,7 @@ def get_proxies(
 
     return DataHandler.get_proxies_list(
         asyncio.run(
-            Scrapper.scrap_or_read(do_prints=do_prints)
+            Scraper.scrap_or_read(do_prints=do_prints)
         ),
         protocol=protocol,
         source=source
@@ -470,7 +470,7 @@ def test_proxies(
     """
 
     return asyncio.run(
-        Scrapper.test_public_ip(
+        Scraper.test_public_ip(
             proxies=proxies,
             proxy_protocol=proxy_protocol,
             website_protocol=website_protocol,
@@ -483,7 +483,7 @@ def test_proxies(
 
 async def async_main():
     """ TEST """
-    data = await Scrapper.scrap_or_read()
+    data = await Scraper.scrap_or_read()
     proxies = DataHandler.get_proxies_list(data, protocol='https')
     print(len(proxies))
 
