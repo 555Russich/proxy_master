@@ -193,8 +193,6 @@ class Scrapper:
 
                 params['limit'] = 500
                 for page in range(1, math.ceil(response['total'] / params['limit']) + 1):
-                    count_before = len(proxies)
-
                     params['page'] = page
                     response: dict = await Scrapper.send_request(
                         url='https://proxylist.geonode.com/api/proxy-list',
@@ -203,8 +201,7 @@ class Scrapper:
                         timeout=20
                     )
 
-                    data = response['data']
-                    for proxy in data:
+                    for proxy in response['data']:
                         proxy_data = {
                             'ip': proxy['ip'],
                             'port': proxy['port'],
@@ -214,8 +211,7 @@ class Scrapper:
                             'last_checked': proxy['lastChecked']
                         }
                         proxies.append(proxy_data)
-                    print(f'Scrapped {len(proxies) - count_before} proxies from page={params["page"]} {domain}') \
-                        if do_prints else ...
+                    print(f'Scrapped {len(proxies)} proxies | page={params["page"]} | {domain}') if do_prints else ...
             case 'openproxy.space':
                 # https://openproxy.space/list/http
                 # host is not working now ...
@@ -337,7 +333,7 @@ class Scrapper:
                                     connector=ProxyConnector.from_url(f'socks4://{proxy}'),
                                     headers=headers,
                                     params={'start': page * 64},
-                                    timeout=10
+                                    timeout=15
                                 )
                             )
                         )
@@ -393,17 +389,6 @@ class Scrapper:
                                         print(f'Unexpected time metric in row: {tds[-1].text} |'
                                               f' {domain=}') if do_prints else ...
                                 proxies.append(proxy_data)
-
-                            # previous_href = soup.find('li', class_='prev_array').a.get('href')
-                            # if '/en/proxy-list/#list' in previous_href:
-                            #     current_page = 0
-                            # else:
-                            #     current_page = int(re.search(r'\d+(?=#list)', previous_href).group(0)) // 64 + 1
-
-                            # print(f'{current_page=}')
-                            # for page_ in pages:
-                            #     pages.remove(current_page)
-
                             pages.remove(page)
                             print(f'Scrapped {len(proxies)} proxies | pages left: {len(pages)} |'
                                   f' {domain}') if do_prints else ...
