@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proxy_master"
-version = "1.2.0.6.2"
-dependencies = ['aiohttp', 'bs4', 'lxml']
+version = "1.0.0"
+dependencies = ['aiohttp', 'bs4', 'lxml', 'pycountry', 'aiohttp_socks']
 authors = [
   { name="555Russich", email="Kutsokondima@yandex.ru" },
 ]
-description = "My first package to provide easy reading proxies from *.txt in different ways. Also scrap proxies..."
+description = "My first package to scrap free proxies from open resources"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
